@@ -23,7 +23,7 @@ Underscore 是一个小巧的工具类库，提供了很多有用的函数式编
 })();
 ```
 
-Underscore 的目标执行环境是浏览器和 NodeJs。Underscore 并不支持 AMD 模块规范。
+Underscore 的目标执行环境是浏览器和 NodeJs。
 在第 12 行，定义了根对象，在浏览器中就是 `window` 对象，在服务器端就是 `exports` 对象。
 
 ```javascript
@@ -61,12 +61,23 @@ var _ = function(obj) {
 
 ```javascript
   if (typeof exports !== 'undefined') {
+    // CMD 模块
     if (typeof module !== 'undefined' && module.exports) {
       exports = module.exports = _;
     }
     exports._ = _;
   } else {
+    // 如果没有 exports 直接挂载到全局对象上
     root._ = _;
+  }
+  
+  // balabala
+  
+  // 代码的最后注册 AMD 模块
+  if (typeof define === 'function' && define.amd) {
+    define('underscore', [], function() {
+      return _;
+    });
   }
 ```
 
