@@ -1004,5 +1004,136 @@ JavaScript 是单线程执行的，`setTimeout` 仅意味着过指定毫秒值�
 `once` 就是函数的单次运行版本，常用于延迟初始化。 
 
 ## 对象相关函数
+
+对象是无序的键值对集合，类似于 Java 中的 `Map`。以下是和对象相关的函数。
+
+```javascript
+  _.keys = function(obj) {
+    if (!_.isObject(obj)) return [];
+    if (nativeKeys) return nativeKeys(obj);
+    var keys = [];
+    for (var key in obj) if (_.has(obj, key)) keys.push(key);
+    return keys;
+  };
+  
+  _.values = function(obj) {
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var values = Array(length);
+    for (var i = 0; i < length; i++) {
+      values[i] = obj[keys[i]];
+    }
+    return values;
+  };
+  
+  _.pairs = function(obj) {
+    var keys = _.keys(obj);
+    var length = keys.length;
+    var pairs = Array(length);
+    for (var i = 0; i < length; i++) {
+      pairs[i] = [keys[i], obj[keys[i]]];
+    }
+    return pairs;
+  };
+```
+
+`keys` 获取对象所有的键的数组；`values` 获取对象中所有值的数组；`pairs` 获取对象中所有键值对的数组。
+
+```javascript
+  _.invert = function(obj) {
+    var result = {};
+    var keys = _.keys(obj);
+    for (var i = 0, length = keys.length; i < length; i++) {
+      result[obj[keys[i]]] = keys[i];
+    }
+    return result;
+  };
+```
+
+`invert` 将对象的键值对反转。
+
+```javascript
+  _.functions = _.methods = function(obj) {
+    var names = [];
+    for (var key in obj) {
+      if (_.isFunction(obj[key])) names.push(key);
+    }
+    return names.sort();
+  };
+```
+
+`functions` 获取对象中所有方法的名称数组。
+
+```javascript
+  _.extend = function(obj) {
+    if (!_.isObject(obj)) return obj;
+    var source, prop;
+    for (var i = 1, length = arguments.length; i < length; i++) {
+      source = arguments[i];
+      for (prop in source) {
+        if (hasOwnProperty.call(source, prop)) {
+            obj[prop] = source[prop];
+        }
+      }
+    }
+    return obj;
+  };
+```
+
+`extend` 在 `options` 参数模式出现以后是出镜率较高的一个方法。
+它遍历第二个及以后的参数，将参数中自有的属性赋值给第一个参数对象；这样后面的参数的同名属性的值会覆盖前面的参数同名属性的值。
+
+```javascript
+  _.pick = function(obj, iteratee, context) {
+    var result = {}, key;
+    if (obj == null) return result;
+    if (_.isFunction(iteratee)) {
+      iteratee = createCallback(iteratee, context);
+      for (key in obj) {
+        var value = obj[key];
+        if (iteratee(value, key, obj)) result[key] = value;
+      }
+    } else {
+      var keys = concat.apply([], slice.call(arguments, 1));
+      obj = new Object(obj);
+      for (var i = 0, length = keys.length; i < length; i++) {
+        key = keys[i];
+        if (key in obj) result[key] = obj[key];
+      }
+    }
+    return result;
+  };
+```
+
+`pick` 取得对象上仅包含指定白名单属性的值的一个拷贝。如果第二个参数是一个函数，说明它是一个用于判断指定键值对是否属于白名单的断言函数。
+否则，认为后续的所有参数为白名单的键名。
+
+`omit` 和 `pick` 恰好相反，取得对象上仅忽略指定黑名单属性的值的一个拷贝。
+
+```javascript
+  _.defaults = function(obj) {
+    if (!_.isObject(obj)) return obj;
+    for (var i = 1, length = arguments.length; i < length; i++) {
+      var source = arguments[i];
+      for (var prop in source) {
+        if (obj[prop] === void 0) obj[prop] = source[prop];
+      }
+    }
+    return obj;
+  };
+```
+
+`defaults` 是 `extend` 的对应版本，其同名键对应的首个非 `undefined` 值作为第一个参数的同名键的值。
+
+`clone` 用于创建对象的一个浅拷贝。
+
+`tap` 用于在链式调用中对中间结果执行操作，但维护调用链。
+
+接下来，定义了一个内部的 `eq` ，用于递归的比较两个对象是否相等。
+
+`isEqual` 调用了上面的 `eq` 来判断俩个对象是否相等。
+
+后面是一些对象类型判断的帮助方法，具体可以看代码实现和 BUG FIX。
+
 ## 工具函数
 ## 链式调用
