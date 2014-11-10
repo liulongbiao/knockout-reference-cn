@@ -1136,4 +1136,106 @@ JavaScript 是单线程执行的，`setTimeout` 仅意味着过指定毫秒值�
 后面是一些对象类型判断的帮助方法，具体可以看代码实现和 BUG FIX。
 
 ## 工具函数
+
+`noConflict` 在最前面已经讲过。
+
+```javascript
+  _.identity = function(value) {
+    return value;
+  };
+
+  _.constant = function(value) {
+    return function() {
+      return value;
+    };
+  };
+
+  _.noop = function(){};
+
+  _.property = function(key) {
+    return function(obj) {
+      return obj[key];
+    };
+  };
+```
+
+几个最常用的函数定义。
+
+```javascript
+  _.matches = function(attrs) {
+    var pairs = _.pairs(attrs), length = pairs.length;
+    return function(obj) {
+      if (obj == null) return !length;
+      obj = new Object(obj);
+      for (var i = 0; i < length; i++) {
+        var pair = pairs[i], key = pair[0];
+        if (pair[1] !== obj[key] || !(key in obj)) return false;
+      }
+      return true;
+    };
+  };
+```
+
+`matches` 在前面创建迭代器函数 `_.iteratee` 中出现，用于创建断言对象匹配所有指定键值对的函数。
+
+`times` 执行函数 n 次，并把所有结果放到数组中返回。
+
+`random` 获取最小和最大值间的一个随机整数。
+
+`now` 获取当前时间戳。
+
+```javascript
+  var escapeMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '`': '&#x60;'
+  };
+  var unescapeMap = _.invert(escapeMap);
+
+  var createEscaper = function(map) {
+    var escaper = function(match) {
+      return map[match];
+    };
+    var source = '(?:' + _.keys(map).join('|') + ')';
+    var testRegexp = RegExp(source);
+    var replaceRegexp = RegExp(source, 'g');
+    return function(string) {
+      string = string == null ? '' : '' + string;
+      return testRegexp.test(string) ? string.replace(replaceRegexp, escaper) : string;
+    };
+  };
+  _.escape = createEscaper(escapeMap);
+  _.unescape = createEscaper(unescapeMap);
+```
+
+`escape` 用于将 HTML 特殊字符转成相应的 HTML entity; `unescape` 反之。
+这里替换的模式其实是一样的，只是替换数据不同，因此提取出 `createEscaper` 函数。
+
+```javascript
+  _.result = function(object, property) {
+    if (object == null) return void 0;
+    var value = object[property];
+    return _.isFunction(value) ? object[property]() : value;
+  };
+```
+
+`result` 获取对象上的属性值，若该属性是一个函数，则以该对象作为其调用上下文，其执行结果作为 `result` 结果输出。
+
+`uniqueId` 根据给定前缀生成一个唯一键，其后缀是一个闭包计数值，永远只会往上加。
+
+`template` 是 Underscore 的模板实现，感兴趣可以自行查看。
+
+```javascript
+  _.chain = function(obj) {
+    var instance = _(obj);
+    instance._chain = true;
+    return instance;
+  };
+```
+
+`chain` 开始将对象封装成一个 Underscore 对象以支持链式调用。
+
 ## 链式调用
