@@ -315,8 +315,236 @@ JavaScript 中的数组基于对象来实现，可认为是特殊的对象。它
 
 `contains` 判断集合的值中是否包含某个元素。它通过 `===` 来判断相等性。
 
+```javascript
+  _.invoke = function(obj, method) {
+    var args = slice.call(arguments, 2);
+    var isFunc = _.isFunction(method);
+    return _.map(obj, function(value) {
+      return (isFunc ? method : value[method]).apply(value, args);
+    });
+  };
+```
+
+`invoke` 会给集合中的每个元素应用第二个参数所表示的函数，如果有三个或以上的参数，则后面的这些参数都作为这个函数的参数传递进去。
+返回的结果是每个元素应用函数的结果所组成的数组。
+
+```javascript
+  _.pluck = function(obj, key) {
+    return _.map(obj, _.property(key));
+  };
+```
+
+`pluck` 是 `map` 的一种常见使用模式，我们仅需要从集合的元素中抽取某个属性。
+
+```javascript
+  _.where = function(obj, attrs) {
+    return _.filter(obj, _.matches(attrs));
+  };
+```
+
+`where` 和 `findWhere` 分别是 `filter` 和 `find` 的常见使用场景，过滤(或找到第一个)满足所有指定键值对的元素。
+
+```javascript
+  _.max = function(obj, iteratee, context) {
+    var result = -Infinity, lastComputed = -Infinity,
+        value, computed;
+    if (iteratee == null && obj != null) {
+      obj = obj.length === +obj.length ? obj : _.values(obj);
+      for (var i = 0, length = obj.length; i < length; i++) {
+        value = obj[i];
+        if (value > result) {
+          result = value;
+        }
+      }
+    } else {
+      iteratee = _.iteratee(iteratee, context);
+      _.each(obj, function(value, index, list) {
+        computed = iteratee(value, index, list);
+        if (computed > lastComputed || computed === -Infinity && result === -Infinity) {
+          result = value;
+          lastComputed = computed;
+        }
+      });
+    }
+    return result;
+  };
+```
+
+`max` 和 `min` 代码雷同，分别是找到集合中最大(或最小)的元素。可以传递一个用于计算比较值的函数。
+如果没有这个函数，那么出于性能因素，这里直接使用 `for` 循环进行迭代。
+如果有该函数，则通过一个 `result` 用于存放最大(或最小)元素，一个 `lastComputed` 存放最大(或最小)比较值，
+然后通过 `each` 迭代找到集合中的最大(或最小)元素。
+
+实际上在 Underscore 的高版本的代码中处处可以看到这种因为性能因素而做出的在代码复杂度上的妥协。
+
+```javascript
+  _.shuffle = function(obj) {
+    var set = obj && obj.length === +obj.length ? obj : _.values(obj);
+    var length = set.length;
+    var shuffled = Array(length);
+    for (var index = 0, rand; index < length; index++) {
+      rand = _.random(0, index);
+      if (rand !== index) shuffled[index] = shuffled[rand];
+      shuffled[rand] = set[index];
+    }
+    return shuffled;
+  };
+```
+
+`shuffle` 用于将集合中的元素进行洗牌。在很多排序算法中，为了避免应元素初始有序而出现最差情况，通过一次洗牌将元素随机打乱，
+可使元素处于平均情况。
+这里的洗牌算法采用 Fisher-Yates 洗牌算法，其思路是从左到右调整元素位置，每次调整的时候随机选择左侧的一个元素，
+将它和当前需调整元素进行换位。
+该算法实现简单，而且可以原地洗牌。这里因为面向函数式编程，所以没有进行原地洗牌，而是返回一个新的洗牌后的集合。
+这也是函数式编程的一个重要思想，尽量限制函数的副作用。
+
+```javascript
+  _.sample = function(obj, n, guard) {
+    if (n == null || guard) {
+      if (obj.length !== +obj.length) obj = _.values(obj);
+      return obj[_.random(obj.length - 1)];
+    }
+    return _.shuffle(obj).slice(0, Math.max(0, n));
+  };
+```
+
+`sample` 用于从集合中随机取 n 个元素的样本。它调用了上面的洗牌算法，然后取洗牌后的前 n 个元素。
+在常规的 `_.sample` 使用中，我们通常仅会有两个参数。
+在作为 `_.map` 的迭代器使用时，我们知道其第一个参数是元素值，第二个参数是元素索引(键)，第三个参数是集合对象。
+这个时候，我们通常只希望每个元素仅随机抽取一个值；而且我们希望代码仅可能简单，如：
+
+```javascript
+_.map([[1, 2, 3], [4, 5]], _.sample);
+```
+
+而不是：
+
+```javascript
+_.map([[1, 2, 3], [4, 5]], function(arr, i, coll) {
+	return _.sample(arr, 1);
+});
+```
+
+因此这个时候，实际上我们传入了第三个额外的参数，如果它存在的话，我们仅取样一个元素。
+所以这种 `guard` 参数的特殊用法仅是为了给 `_.map` 作为迭代器提供便利。
+在后续的数组相关函数中，我们还可以看到多个类似 `guard` 参数的使用。
+
+```javascript
+  _.sortBy = function(obj, iteratee, context) {
+    iteratee = _.iteratee(iteratee, context);
+    return _.pluck(_.map(obj, function(value, index, list) {
+      return {
+        value: value,
+        index: index,
+        criteria: iteratee(value, index, list)
+      };
+    }).sort(function(left, right) {
+      var a = left.criteria;
+      var b = right.criteria;
+      if (a !== b) {
+        if (a > b || a === void 0) return 1;
+        if (a < b || b === void 0) return -1;
+      }
+      return left.index - right.index;
+    }), 'value');
+  };
+```
+
+`sortBy` 对集合中的元素进行排序。
+这里的排序条件调用了 `_.iteratee`，可以记得上面它支持没有参数、函数参数、对象参数和字符串参数四种类型的参数来生成对应的迭代器。
+这里的流程是先通过 `map` 将集合映射成带有 `value`、`index` 和 `criteria` 三个属性的对象的数组；
+然后这个数组对象通过通用排序函数进行排序；最后通过 `pluck` 取出排序后数组的 `value` 属性组成排序结果。
+
+```javascript
+  var group = function(behavior) {
+    return function(obj, iteratee, context) {
+      var result = {};
+      iteratee = _.iteratee(iteratee, context);
+      _.each(obj, function(value, index) {
+        var key = iteratee(value, index, obj);
+        behavior(result, value, key);
+      });
+      return result;
+    };
+  };
+
+  _.groupBy = group(function(result, value, key) {
+    if (_.has(result, key)) result[key].push(value); else result[key] = [value];
+  });
+
+  _.indexBy = group(function(result, value, key) {
+    result[key] = value;
+  });
+
+  _.countBy = group(function(result, value, key) {
+    if (_.has(result, key)) result[key]++; else result[key] = 1;
+  });
+```
+
+`groupBy`、`indexBy` 和 `countBy` 都是将集合聚合成一个 `map`，它的键是通过函数计算出来的键，
+值分别是对应键的元素数组、元素值或元素数量。
+在常见的函数式编程里，它们分别的实现可能都是使用 `reduce` 函数来实现。但考虑到聚合结果都是一个 `map`，且生成键的逻辑其实是一致的，
+所以这里提取出一个统一的 `group` 内部实现，它仅在具体如何将对象的元素聚合到 `map` 上的行为有差异。
+
+```javascript
+  _.sortedIndex = function(array, obj, iteratee, context) {
+    iteratee = _.iteratee(iteratee, context, 1);
+    var value = iteratee(obj);
+    var low = 0, high = array.length;
+    while (low < high) {
+      var mid = low + high >>> 1;
+      if (iteratee(array[mid]) < value) low = mid + 1; else high = mid;
+    }
+    return low;
+  };
+```
+
+`sortedIndex` 找到某个元素在一个以排序数组中的插入位置，这里使用了二分查找。
+
+```javascript
+  _.toArray = function(obj) {
+    if (!obj) return [];
+    if (_.isArray(obj)) return slice.call(obj);
+    if (obj.length === +obj.length) return _.map(obj, _.identity);
+    return _.values(obj);
+  };
+```
+
+`toArray` 将一个集合转换成数组。最常见的是将一个伪数组对象转成数组。
+这里如果是数组对象，就调用 `slice` 方法来获取数组的一个完整拷贝；如果是伪数组对象，通过 `map` 将其映射为新的数组；
+其他情况返回对象的值所组成的数组。
+实际上对伪数组对象像数组一样调用 `slice` 方法也是可行的。但在旧版本的 IE 中 `slice` 的实现可能不支持伪数组对象，
+因此这里是通过 `map` 进行映射。
+
+```javascript
+  _.partition = function(obj, predicate, context) {
+    predicate = _.iteratee(predicate, context);
+    var pass = [], fail = [];
+    _.each(obj, function(value, key, obj) {
+      (predicate(value, key, obj) ? pass : fail).push(value);
+    });
+    return [pass, fail];
+  };
+```
+
+`partition` 根据条件将集合中的元素分成满足条件和不满足条件的两部分。
+
+至此，集合相关的函数告一段落。
+
+我们可以看一下集合函数中第二个参数 `iteratee` 或 `predicate` 函数。
+在 `each` 中，我们通常需要给每个元素执行某些操作，不传这个参数或者传入对象或字符串对这个方法而言并没有显而易见的意义，
+所以这个方法中通过 `createCallback` 来创建迭代器；
+在 `reduce` 和 `reduceRight` 中，迭代器需传入聚合中间结果和迭代元素信息，然后返回一个聚合的结果，
+所以也不能使用 `_.iteratee` 来创建迭代器。
+对其他方法而言，迭代器一般仅和当前元素相关，且通常是计算出一个值，因此通过 `_.iteratee` 来创建的迭代器较容易理解。
 
 ## 数组相关函数
+
+数组是有序元素集合，所以存在和数组特性相关的一些函数。
+它们在调用时需注意传入的参数需为数组。
+
+
+
 ## 函数相关函数
 ## 对象相关函数
 ## 工具函数
