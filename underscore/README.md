@@ -421,7 +421,7 @@ _.map([[1, 2, 3], [4, 5]], _.sample);
 
 ```javascript
 _.map([[1, 2, 3], [4, 5]], function(arr, i, coll) {
-	return _.sample(arr, 1);
+	return _.sample(arr, null);
 });
 ```
 
@@ -543,7 +543,229 @@ _.map([[1, 2, 3], [4, 5]], function(arr, i, coll) {
 数组是有序元素集合，所以存在和数组特性相关的一些函数。
 它们在调用时需注意传入的参数需为数组。
 
+```javascript
+  _.first = _.head = _.take = function(array, n, guard) {
+    if (array == null) return void 0;
+    if (n == null || guard) return array[0];
+    if (n < 0) return [];
+    return slice.call(array, 0, n);
+  };
+  
+  _.rest = _.tail = _.drop = function(array, n, guard) {
+    return slice.call(array, n == null || guard ? 1 : n);
+  };
+```
 
+`first` 取数组的前 n 个元素；`rest` 取数组前 n 个元素之后的元素；`initial` 取数组除最后 n 个元素之外的元素；`last` 取数组最后 n 个元素。
+在实现上都是通过计算数组需要 `slice` 的两个索引值来实现。
+注意这几个函数都有 `guard` 参数，它们都是为了上面说的为 `_.map` 提供便利。
+
+```javascript
+  _.compact = function(array) {
+    return _.filter(array, _.identity);
+  };
+```
+
+`compact` 去除所有逻辑 false 的值。
+
+```javascript
+  var flatten = function(input, shallow, strict, output) {
+    if (shallow && _.every(input, _.isArray)) {
+      return concat.apply(output, input);
+    }
+    for (var i = 0, length = input.length; i < length; i++) {
+      var value = input[i];
+      if (!_.isArray(value) && !_.isArguments(value)) {
+        if (!strict) output.push(value);
+      } else if (shallow) {
+        push.apply(output, value);
+      } else {
+        flatten(value, shallow, strict, output);
+      }
+    }
+    return output;
+  };
+
+  _.flatten = function(array, shallow) {
+    return flatten(array, shallow, false, []);
+  };
+```
+
+`flatten` 将一个嵌套的数组展平。
+
+```javascript
+_.flatten([1, [2], [3, [[4]]]]); //=> [1, 2, 3, 4];
+_.flatten([1, [2], [3, [[4]]]], true); //=> [1, 2, 3, [[4]]]; 
+```
+
+可以传入第二个参数，是否浅度展平：如果是的话仅展平一层；否则会递归整个结构进行展平。
+
+```javascript
+  _.uniq = _.unique = function(array, isSorted, iteratee, context) {
+    if (array == null) return [];
+    if (!_.isBoolean(isSorted)) {
+      context = iteratee;
+      iteratee = isSorted;
+      isSorted = false;
+    }
+    if (iteratee != null) iteratee = _.iteratee(iteratee, context);
+    var result = [];
+    var seen = [];
+    for (var i = 0, length = array.length; i < length; i++) {
+      var value = array[i];
+      if (isSorted) {
+        if (!i || seen !== value) result.push(value);
+        seen = value;
+      } else if (iteratee) {
+        var computed = iteratee(value, i, array);
+        if (_.indexOf(seen, computed) < 0) {
+          seen.push(computed);
+          result.push(value);
+        }
+      } else if (_.indexOf(result, value) < 0) {
+        result.push(value);
+      }
+    }
+    return result;
+  };
+```
+
+这里 `isSorted` 参数是用于指示原数组是否已是有序的，如果是有序的，可以通过前一个值是否等于当前值来判断是否需将当前值加入结果集中；
+否则已有比较值是一个数组，根据迭代器算出比较值后，查看它在已有比较值中是否存在来判断它是否需加入结果集。
+这里实际上 `isSorted`、`iteratee` 及 `context` 都是可选参数，且 `isSorted` 在其位置上并非必填。
+所以这里通过限制 `isSorted` 为布尔型，判断它是否存在。
+
+```javascript
+  _.union = function() {
+    return _.uniq(flatten(arguments, true, true, []));
+  };
+```
+
+`union`、`intersection` 和 `difference` 是集合论中的概念。集(set) 是无序元素的集合，所以这里的数组被当做集(set) 来看待。
+`union` 就是给定多个集的并集；`intersection` 是给定多个集的交集；`difference` 是属于第一个集，但不属于其他集的元素的集。
+`union` 的实现中直接将给定参数展平，然后给上面的 `_.uniq` 获取所有唯一元素的集。
+
+```javascript
+  _.intersection = function(array) {
+    if (array == null) return [];
+    var result = [];
+    var argsLength = arguments.length;
+    for (var i = 0, length = array.length; i < length; i++) {
+      var item = array[i];
+      if (_.contains(result, item)) continue;
+      for (var j = 1; j < argsLength; j++) {
+        if (!_.contains(arguments[j], item)) break;
+      }
+      if (j === argsLength) result.push(item);
+    }
+    return result;
+  };
+```
+
+`intersection` 的实现中以第一个数组作为基础，遍历每个元素查看在其他数组中是否存在。
+
+```javascript
+  _.difference = function(array) {
+    var rest = flatten(slice.call(arguments, 1), true, true, []);
+    return _.filter(array, function(value){
+      return !_.contains(rest, value);
+    });
+  };
+```
+
+`difference` 的实现中将其他数组展平，然后过滤出第一个数组中不属于展平数组的元素。
+
+```javascript
+  _.zip = function(array) {
+    if (array == null) return [];
+    var length = _.max(arguments, 'length').length;
+    var results = Array(length);
+    for (var i = 0; i < length; i++) {
+      results[i] = _.pluck(arguments, i);
+    }
+    return results;
+  };
+```
+
+`zip` 即拉链，即每个数组中第一个元素依次排列到一起，然后排列第二个元素，依次类推。
+在一般的函数式语言中，`zip` 函数得到的是一个展平的列表，且到数组中较短的长度为止：
+
+```clojure
+(zip [1 2 3] [4 5 6]) ;=> [1 4 2 5 3 6]
+(zip [1 2 3] [4 5]) ;=> [1 4 2 5]
+```
+
+但这里 `zip` 直接得到的是一个数组的数组，实现上比较方便。
+
+```javascript
+  _.object = function(list, values) {
+    if (list == null) return {};
+    var result = {};
+    for (var i = 0, length = list.length; i < length; i++) {
+      if (values) {
+        result[list[i]] = values[i];
+      } else {
+        result[list[i][0]] = list[i][1];
+      }
+    }
+    return result;
+  };
+```
+
+`object` 将两个键和值的数组或一个键值对数组转换成一个对象。
+
+```javascript
+  _.indexOf = function(array, item, isSorted) {
+    if (array == null) return -1;
+    var i = 0, length = array.length;
+    if (isSorted) {
+      if (typeof isSorted == 'number') {
+        i = isSorted < 0 ? Math.max(0, length + isSorted) : isSorted;
+      } else {
+        i = _.sortedIndex(array, item);
+        return array[i] === item ? i : -1;
+      }
+    }
+    for (; i < length; i++) if (array[i] === item) return i;
+    return -1;
+  };
+
+  _.lastIndexOf = function(array, item, from) {
+    if (array == null) return -1;
+    var idx = array.length;
+    if (typeof from == 'number') {
+      idx = from < 0 ? idx + from + 1 : Math.min(idx, from + 1);
+    }
+    while (--idx >= 0) if (array[idx] === item) return idx;
+    return -1;
+  };
+```
+
+前面讲了 ES5 中引入了 `Array.prototype.indexOf` 和 `Array.prototype.lastIndexOf` 用于查找元素在数组中的第一个索引值和最后一个索引值。
+因为在旧版本的 IE 中并没有这两个方法，所以 Underscore 提供了这两个方法。
+在 `indexOf` 的实现中，第三个参数是查找的起始索引。这里如果起始索引存在且不是数字的话，说明是给了已有数组是已排序数组的提示。
+这样可以调用上面的 `_.sortedIndex` 进行二分查找。
+
+```javascript
+  _.range = function(start, stop, step) {
+    if (arguments.length <= 1) {
+      stop = start || 0;
+      start = 0;
+    }
+    step = step || 1;
+
+    var length = Math.max(Math.ceil((stop - start) / step), 0);
+    var range = Array(length);
+
+    for (var idx = 0; idx < length; idx++, start += step) {
+      range[idx] = start;
+    }
+
+    return range;
+  };
+```
+
+`range` 函数可以指定起止值和步长，生成一个范围内的值的数组。如果只传入一个参数，则认为这个参数是结束值，步长默认为 1。
 
 ## 函数相关函数
 ## 对象相关函数
