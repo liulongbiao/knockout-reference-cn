@@ -1250,3 +1250,71 @@ JavaScript 是单线程执行的，`setTimeout` 仅意味着过指定毫秒值�
 `chain` 开始将对象封装成一个 Underscore 对象以支持链式调用。
 
 ## 链式调用
+
+链式调用在代码结构上更接近于自然语言，所以在 jQuery 出现以后得到很多关注。
+
+```javascript
+  var result = function(obj) {
+    return this._chain ? _(obj).chain() : obj;
+  };
+```
+
+首先定义了一个帮助方法，如果上下文的 `_chain` 属性为真，则返回对象继续封装为链式调用对象，否则直接返回。
+
+```javascript
+  _.mixin = function(obj) {
+    _.each(_.functions(obj), function(name) {
+      var func = _[name] = obj[name];
+      _.prototype[name] = function() {
+        var args = [this._wrapped];
+        push.apply(args, arguments);
+        return result.call(this, func.apply(_, args));
+      };
+    });
+  };
+
+  _.mixin(_);
+```
+
+`mixin` 可以将传入的参数对象上的方法添加到 `_` 的原型上。
+`mixin` 是 JavaScript 中一种很有力的模式；你可以定义一套相关的方法集，然后可以混入给任何构造函数的原型对象。
+所以使用 `mixin` 来多继承行为非常有效。
+不过挂到原型上的方法对函数的调用做了点小修改，在所传入的所有参数的前面传入了一个被封装的原始对象作为 `_` 方法调用的第一个参数。
+这样调用 `_(obj).someMethod(args...)` 就等价于 `_.someMethod(obj, args...)` 。
+下面调用 `_.mixin(_);` 将所有 `_` 上定义的方法都挂载到了 `_.prototype` 上了。
+
+下面还需要将数组上的方法挂载到 `_.prototype` 上。
+
+```javascript
+  _.each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      var obj = this._wrapped;
+      method.apply(obj, arguments);
+      if ((name === 'shift' || name === 'splice') && obj.length === 0) delete obj[0];
+      return result.call(this, obj);
+    };
+  });
+
+  _.each(['concat', 'join', 'slice'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      return result.call(this, method.apply(this._wrapped, arguments));
+    };
+  });
+```
+
+数组上的方法分为就地修改的方法和生成新数组返回的方法。
+对就地修改的方法，在执行方法后返回结果应该是原数组；
+对生成新数组的方法，返回结果直接就是新的数组；
+所以这里将两种情形分开处理。
+
+```javascript
+  _.prototype.value = function() {
+    return this._wrapped;
+  };
+```
+
+最后，在 `_.prototype` 添加一个  `value` 方法，用于解封 `_` 对象，获取结果值。它通常是链式调用的最后一个调用。
+
+至此，Underscore 源码阅读完毕。
