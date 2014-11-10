@@ -768,6 +768,241 @@ _.flatten([1, [2], [3, [[4]]]], true); //=> [1, 2, 3, [[4]]];
 `range` 函数可以指定起止值和步长，生成一个范围内的值的数组。如果只传入一个参数，则认为这个参数是结束值，步长默认为 1。
 
 ## 函数相关函数
+
+函数是 JavaScript 中一个重要的组成部分，函数式编程涉及到很多对函数进行封装处理的高阶函数。
+
+```javascript
+  var Ctor = function(){};
+
+  _.bind = function(func, context) {
+    var args, bound;
+    if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+    if (!_.isFunction(func)) throw new TypeError('Bind must be called on a function');
+    args = slice.call(arguments, 2);
+    bound = function() {
+      if (!(this instanceof bound)) return func.apply(context, args.concat(slice.call(arguments)));
+      Ctor.prototype = func.prototype;
+      var self = new Ctor;
+      Ctor.prototype = null;
+      var result = func.apply(self, args.concat(slice.call(arguments)));
+      if (_.isObject(result)) return result;
+      return self;
+    };
+    return bound;
+  };
+```
+
+上面说了除了通过 `call` 和 `apply` 动态绑定函数执行的上下文外， ES5 中引入了 `Function.prototype.bind` 将一个函数上下文
+永久地绑定到某个对象上。
+这里如果浏览器已经存在 `Function.prototype.bind` 的实现，则直接使用原生的 `bind` 实现。
+第二个参数后的参数为给函数绑定的默认参数列表，所以这里使用 `args` 进行保存。
+返回的函数有两种调用方式，一种是直接调用，一种是通过 `new` 关键字创建一个对象。
+这里将需返回的绑定函数赋值给 `bound` 变量，供实现内部作为构造函数名称进行调用。
+如果是直接调用的话，其执行的上下文中 `this` 就不是 `bound` 这个构造函数的实例，可以直接返回应用已有参数和给定参数后的函数执行结果。
+如果是 `new` 创建的对象，则将函数的原型赋值给一个可重用的构造函数的原型对象，然后 `new` 出新的对象作为函数的执行上下文。
+应用函数后的结果如果是一个对象，则返回该结果；否则(一般构造函数都不返回值)返回这个新对象。
+
+```javascript
+  _.partial = function(func) {
+    var boundArgs = slice.call(arguments, 1);
+    return function() {
+      var position = 0;
+      var args = boundArgs.slice();
+      for (var i = 0, length = args.length; i < length; i++) {
+        if (args[i] === _) args[i] = arguments[position++];
+      }
+      while (position < arguments.length) args.push(arguments[position++]);
+      return func.apply(this, args);
+    };
+  };
+```
+
+很多时候给函数特定位置上的形参绑定固定值，但不改变函数上下文 `this` 的引用。
+这种方式返回一个函数供后续设置其他参数，而不是全部 `apply` 所有的参数得到一个值，称为偏应用。
+这里的实现可以传入 `_` 对象作为相应位置的占位符，表示暂不绑定该位置的参数，这样你实际上可以绑定任何位置上的形参。
+
+```javascript
+  _.bindAll = function(obj) {
+    var i, length = arguments.length, key;
+    if (length <= 1) throw new Error('bindAll must be passed function names');
+    for (i = 1; i < length; i++) {
+      key = arguments[i];
+      obj[key] = _.bind(obj[key], obj);
+    }
+    return obj;
+  };
+```
+
+`bindAll` 用于将一个对象上给定的方法名对应的方法的执行上下文全部绑定为该对象。这样不管在任何地方以何种方式调用
+该对象上的相应方法，其执行上下文都不会改变。
+
+```javascript
+  _.memoize = function(func, hasher) {
+    var memoize = function(key) {
+      var cache = memoize.cache;
+      var address = hasher ? hasher.apply(this, arguments) : key;
+      if (!_.has(cache, address)) cache[address] = func.apply(this, arguments);
+      return cache[address];
+    };
+    memoize.cache = {};
+    return memoize;
+  };
+```
+
+`memoize` 用于给计算量大的纯函数添加缓存，如果对应的计算结果已存在，则返回已有结果；否则计算出结果并添加到缓存中。
+这里 `cache` 直接作为 `memoize` 函数的属性，所以可以看到 **函数也是对象** 。
+可以传入一个 `hasher` 参数来计算缓存键，如果没有则取第一个参数作为缓存键。
+
+```javascript
+  _.delay = function(func, wait) {
+    var args = slice.call(arguments, 2);
+    return setTimeout(function(){
+      return func.apply(null, args);
+    }, wait);
+  };
+
+  _.defer = function(func) {
+    return _.delay.apply(_, [func, 1].concat(slice.call(arguments, 1)));
+  };
+```
+
+`delay` 就是 `setTimeout` 的一个封装； `defer` 就是直接给 `delay` 的 wait 设置为 1。
+JavaScript 是单线程执行的，`setTimeout` 仅意味着过指定毫秒值得时间将该函数放到待执行队列中。
+所以 `defer` 即意味着将该函数放至当前待执行队列的尾部。它通常用于异步化函数执行。
+
+```javascript
+  _.throttle = function(func, wait, options) {
+    var context, args, result;
+    var timeout = null;
+    var previous = 0;
+    if (!options) options = {};
+    var later = function() {
+      previous = options.leading === false ? 0 : _.now();
+      timeout = null;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    };
+    return function() {
+      var now = _.now();
+      if (!previous && options.leading === false) previous = now;
+      var remaining = wait - (now - previous);
+      context = this;
+      args = arguments;
+      if (remaining <= 0 || remaining > wait) {
+        clearTimeout(timeout);
+        timeout = null;
+        previous = now;
+        result = func.apply(context, args);
+        if (!timeout) context = args = null;
+      } else if (!timeout && options.trailing !== false) {
+        timeout = setTimeout(later, remaining);
+      }
+      return result;
+    };
+  };
+```
+
+`throttle` 用于创建给定函数的节流版本，即每隔 `wait` 毫秒仅触发一次原函数的执行。
+它常用于原函数的执行成本较长，而其监听的事件的变动较频繁；
+如需要异步给出自动完成的提示，但用户的输入变化却很快，这时候就可以定义一个发送请求的最短间隔时间。
+
+```javascript
+  _.debounce = function(func, wait, immediate) {
+    var timeout, args, context, timestamp, result;
+
+    var later = function() {
+      var last = _.now() - timestamp;
+
+      if (last < wait && last > 0) {
+        timeout = setTimeout(later, wait - last);
+      } else {
+        timeout = null;
+        if (!immediate) {
+          result = func.apply(context, args);
+          if (!timeout) context = args = null;
+        }
+      }
+    };
+
+    return function() {
+      context = this;
+      args = arguments;
+      timestamp = _.now();
+      var callNow = immediate && !timeout;
+      if (!timeout) timeout = setTimeout(later, wait);
+      if (callNow) {
+        result = func.apply(context, args);
+        context = args = null;
+      }
+
+      return result;
+    };
+  };
+```
+
+`debounce` 和 `throttle` 类似，返回的是给定函数的防反跳版本，即给定时间间隔内没有接收到触发信号时才触发一次原函数的执行。
+
+```javascript
+  _.wrap = function(func, wrapper) {
+    return _.partial(wrapper, func);
+  };
+```
+
+`wrap` 将第一个参数函数作为第二个参数函数的参数传递。可用于类似 AOP 相关操作。
+
+```javascript
+  _.negate = function(predicate) {
+    return function() {
+      return !predicate.apply(this, arguments);
+    };
+  };
+```
+
+`negate` 返回断言函数的否定版本。
+
+```javascript
+  _.compose = function() {
+    var args = arguments;
+    var start = args.length - 1;
+    return function() {
+      var i = start;
+      var result = args[start].apply(this, arguments);
+      while (i--) result = args[i].call(this, result);
+      return result;
+    };
+  };
+```
+
+`compose` 用于组合函数，将最后一个函数应用到参数上，其返回值作为前一个函数的参数；依次类推，第一个函数的返回值作为整体的返回值。
+
+```javascript
+  _.after = function(times, func) {
+    return function() {
+      if (--times < 1) {
+        return func.apply(this, arguments);
+      }
+    };
+  };
+
+  _.before = function(times, func) {
+    var memo;
+    return function() {
+      if (--times > 0) {
+        memo = func.apply(this, arguments);
+      } else {
+        func = null;
+      }
+      return memo;
+    };
+  };
+
+  _.once = _.partial(_.before, 2);
+```
+
+`after` 仅会在原函数被调用 n 次以后再执行，可用于聚合多个异步调用，你可以确保所有异步调用都完成后再继续执行。
+`before` 仅在原函数被调用少于 n 次时会执行，后续的调用都直接返回第 n-1 次调用的值。
+`once` 就是函数的单次运行版本，常用于延迟初始化。 
+
 ## 对象相关函数
 ## 工具函数
 ## 链式调用
