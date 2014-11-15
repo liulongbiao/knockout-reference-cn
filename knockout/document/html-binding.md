@@ -1,12 +1,12 @@
-# "html" ��
+# "html" 绑定
 
-### Ŀ��
+### 目的
 
-`html` ���ù����� DOM Ԫ�ؿ�����ʾ��Ĳ�����ָ���� HTML��
+`html` 绑定让关联的 DOM 元素可以显示你的参数所指定的 HTML。
 
-ͨ�����������ͼģ���е�ֵʵ����������ϣ����Ⱦ�� HTML ��ǵ��ַ���ʱ�ǳ����á�
+通常这在你的视图模型中的值实际上是你所希望渲染的 HTML 标记的字符串时非常有用。
 
-ʾ��
+示例
 
 ```html
 <div data-bind="html: details"></div>
@@ -19,29 +19,29 @@
 </script>
 ```
 
-### ����
+### 参数
 
-* ������
+* 主参数
 
-  KO �����ǰ�ĵ����ݲ�ʹ�� jQuery �� `html` �������� jQuery ������ʱͨ�����ַ�������Ϊ HTML �ڵ㲢��ÿ���ڵ���Ϊ
-��Ԫ�ص��ӽڵ㸽������Ԫ�ص���������Ϊ��Ĳ���ֵ��
+  KO 清除以前的的内容并使用 jQuery 的 `html` 函数或在 jQuery 不可用时通过将字符串解析为 HTML 节点并将每个节点作为
+该元素的子节点附着来将元素的内容设置为你的参数值。
 
-  ����ò�����һ�� observable ֵ���ð󶨻���ֵ���ʱ����Ԫ�ص����ݡ����������� observable��
-����������Ԫ�ص�����һ������Ҳ������¡�
+  如果该参数是一个 observable 值，该绑定会在值变更时更新元素的内容。若参数不是 observable，
+它仅会设置元素的内容一次且再也不会更新。
 
-  ������ṩ�����ֻ��ַ�����Ϊ�Ķ���(�紫����һ�����������)���� `innerHTML` ���ȼ��� `yourParameter.toString()`��
+  如果你提供了数字或字符串以为的东西(如传入了一个对象或数组)，其 `innerHTML` 将等价于 `yourParameter.toString()`。
 
-* �������
+* 额外参数
 
-   * û��
+   * 没有
    
-### ע������ HTML ת��
+### 注：关于 HTML 转码
 
-���ڸð�ʹ�� `innerHTML` ���������Ԫ�ص����ݣ���Ӧ��С�Ĳ��ڲ����ŵ�ģ��ֵ��ʹ������
-��Ϊ�������ܿ����ű�ע�빥���Ŀ����ԡ�
-����㲻�ܱ�֤������ʾ�İ�ȫ��(�������ڴ洢��������ݿ���һ����ͬ�û�������)��
-�������ʹ�� [text ��](./text-binding.md)������ת��ʹ�� `innerText` �� `textContent` ������Ԫ�ص��ı�ֵ��
+鉴于该绑定使用 `innerHTML` 来设置你的元素的内容，你应该小心不在不受信的模型值里使用它，
+因为这样可能开启脚本注入攻击的可能性。
+如果你不能保证内容显示的安全性(如它基于存储于你的数据库中一个不同用户的输入)，
+则你可以使用 [text 绑定](./text-binding.md)，它将转而使用 `innerText` 或 `textContent` 来设置元素的文本值。
 
-### ����
+### 依赖
 
-û�У����˺��� Knockout ��Ȿ����
+没有，除了核心 Knockout 类库本身。
