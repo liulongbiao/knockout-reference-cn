@@ -10,9 +10,7 @@
 <div data-bind="visible: shouldShowMessage">
     You will see this message only when "shouldShowMessage" holds a true value.
 </div>
-```
 
-```javascript
 <script type="text/javascript">
     var viewModel = {
         shouldShowMessage: ko.observable(true) // Message initially visible
@@ -51,9 +49,7 @@
 <div data-bind="visible: myValues().length > 0">
     You will see this message only when 'myValues' has at least one member.
 </div>
-```
 
-```javascript
 <script type="text/javascript">
     var viewModel = {
         myValues: ko.observableArray([]) // Initially empty, so message hidden

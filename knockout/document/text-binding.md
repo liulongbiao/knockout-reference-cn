@@ -10,9 +10,7 @@
 
 ```html
 Today's message is: <span data-bind="text: myMessage"></span>
-```
 
-```javascript
 <script type="text/javascript">
     var viewModel = {
         myMessage: ko.observable() // Initially blank
@@ -45,9 +43,7 @@ Today's message is: <span data-bind="text: myMessage"></span>
 
 ```html
 The item is <span data-bind="text: priceRating"></span> today.
-```
 
-```javascript
 <script type="text/javascript">
     var viewModel = {
         price: ko.observable(24.95)
