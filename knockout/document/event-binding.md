@@ -1,40 +1,47 @@
-# "click" 绑定
+# "event" 绑定
 
 ### 目的
 
-`click` 绑定添加了一个事件处理器，这样当关联的 DOM 元素被点击时你所选择的 JavaScript 函数将被调用。
-它常用在像 `button`、`input` 和 `a` 这样的元素上，但实际上可用于任何可见的 DOM 元素。
+`event` 绑定让你可以给特定事件添加一个事件处理器，这样当关联的 DOM 元素上高事件被触发时你所选择的 JavaScript 函数将被调用。
+它可用于绑定任何事件，如 `keypress`, `mouseover` 或 `mouseout`。
 
 ### 示例
 
 ```html
 <div>
-    You've clicked <span data-bind="text: numberOfClicks"></span> times
-    <button data-bind="click: incrementClickCounter">Click me</button>
+    <div data-bind="event: { mouseover: enableDetails, mouseout: disableDetails }">
+        Mouse over me
+    </div>
+    <div data-bind="visible: detailsEnabled">
+        Details
+    </div>
 </div>
  
 <script type="text/javascript">
     var viewModel = {
-        numberOfClicks : ko.observable(0),
-        incrementClickCounter : function() {
-            var previousCount = this.numberOfClicks();
-            this.numberOfClicks(previousCount + 1);
+        detailsEnabled: ko.observable(false),
+        enableDetails: function() {
+            this.detailsEnabled(true);
+        },
+        disableDetails: function() {
+            this.detailsEnabled(false);
         }
     };
+    ko.applyBindings(viewModel);
 </script>
 ```
 
-每次点击按钮时，它都会调用视图模型上的 `incrementClickCounter()`，然后它会更新视图模型状态，
-随之导致 UI 的更新。
+这样每次你的鼠标指向或移出第一个元素时将调用视图模型上的方法来切换 `detailsEnabled` observable 值。
+第二个元素会响应 `detailsEnabled` 的值的变更以显示或隐藏它本身。
 
 ### 参数
 
   * 主参数
   
-  你想绑定到元素的 `click` 事件的函数。
+  你应该传入一个 JavaScript 对象，其中属性名对应于事件名，其值对应于你想给事件绑定的函数。
   
   你可以引用任何 JavaScript 函数 - 它不需要是你视图模型上的函数。
-你可以通过写 `click: someObject.someFunction` 来引用任何对象上的函数。
+你可以通过写 `event { mouseover: someObject.someFunction }` 来引用任何对象上的函数。
 
   * 额外参数
   
@@ -47,20 +54,19 @@
 
 ```html
 <ul data-bind="foreach: places">
-    <li>
-        <span data-bind="text: $data"></span>
-        <button data-bind="click: $parent.removePlace">Remove</button>
-    </li>
+    <li data-bind="text: $data, event: { mouseover: $parent.logMouseOver }"> </li>
 </ul>
+<p>You seem to be interested in: <span data-bind="text: lastInterest"> </span></p>
  
  <script type="text/javascript">
      function MyViewModel() {
          var self = this;
+         self.lastInterest = ko.observable();
          self.places = ko.observableArray(['London', 'Paris', 'Tokyo']);
  
-         // The current item will be passed as the first parameter, so we know which place to remove
-         self.removePlace = function(place) {
-             self.places.remove(place)
+         // The current item will be passed as the first parameter, so we know which place was hovered over
+         self.logMouseOver = function(place) {
+             self.lastInterest(place);
          }
      }
      ko.applyBindings(new MyViewModel());
@@ -80,9 +86,9 @@
 Knockout 将会把该事件作为你的函数的第二个参数传入，如下例：
 
 ```html
-<button data-bind="click: myFunction">
-    Click me
-</button>
+<div data-bind="event: { mouseover: myFunction }">
+    Mouse over me
+</div>
  
  <script type="text/javascript">
     var viewModel = {
@@ -101,9 +107,9 @@ Knockout 将会把该事件作为你的函数的第二个参数传入，如下�
 如果你需要传入更多参数，一种方式是将你的处理器封装在一个函数字面量中来接收参数，如下例：
 
 ```html
-<button data-bind="click: function(data, event) { myFunction('param1', 'param2', data, event) }">
-    Click me
-</button>
+<div data-bind="event: { mouseover: function(data, event) { myFunction('param1', 'param2', data, event) } }">
+    Mouse over me
+</div>
 ```
 
 现在， KO 会给你的函数字面量传入数据和事件对象，而它们随后被传递给你的处理器。
@@ -112,37 +118,40 @@ Knockout 将会把该事件作为你的函数的第二个参数传入，如下�
 函数，它可以给函数引用附加特定的参数值：
 
 ```html
-<button data-bind="click: myFunction.bind($data, 'param1', 'param2')">
+<button data-bind="event: { mouseover: myFunction.bind($data, 'param1', 'param2') }">
     Click me
 </button>
 ```
 
-### 注3：允许默认的点击动作
+### 注3：允许默认的动作
 
-默认, Knockout 会阻止点击事件执行任何默认动作。
-这意味着如果你在 `a` 标签上使用 `click` 绑定，你的浏览器只会调用你的处理器函数而不会导航到该链接的 `href` 上。
+默认, Knockout 会阻止事件执行任何默认动作。
+例如你使用 `event` 绑定来捕获 `input` 标签上的 `keypress` 事件，
+你的浏览器只会调用你的处理器函数而不会将键对应的值添加到 `input` 元素的值上。
+更常见的示例时使用 [click 绑定](./click-binding.md) ，它在内部使用了该绑定，
+你的处理器函数将被调用但不会导航到该链接的 `href` 上。
 这是非常有用的默认行为，因为当你使用 `click` 绑定时，通常你是使用该链接来作为操作你的视图模型的 UI 部分，
 而不是作为一个常规的到另一个 web 页面的链接。
 
-然而，如果你确实需要执行默认的点击动作，只要从你的 `click` 处理函数中返回 `true` 即可。
+然而，如果你确实需要执行默认的点击动作，只要从你的 `event` 处理函数中返回 `true` 即可。
 
 ### 注4： 阻止事件冒泡
 
 默认， Knockout 将允许点击事件持续冒泡到任何更高层的事件处理器。
-如，当你的元素和该元素的某个父元素都能处理 `click` 事件，
-则两个 click 处理器都会被触发。如果需要，你可以通过包含一个额外的名为 `clickBubble` 的绑定，
+如，当你的元素和该元素的某个父元素都能处理相同的 `mouseover` 事件，
+则两个事件处理器都会被触发。如果需要，你可以通过包含一个额外的名为 `youreventBubble` 的绑定，
 并给它传入 `false` 来阻止事件冒泡。如下例：
 
 ```html
-<div data-bind="click: myDivHandler">
-    <button data-bind="click: myButtonHandler, clickBubble: false">
+<div data-bind="event: { mouseover: myDivHandler }">
+    <button data-bind="event: { mouseover: myButtonHandler }, mouseoverBubble: false">
         Click me
     </button>
 </div>
 ```
 
 通常，这里的 `myButtonHandler` 将先被调用，然后点击事件会被冒泡到 `myDivHandler`。
-然后我们添加了带 `false` 值的 `clickBubble`，它在事件通过 `myButtonHandler` 后阻止了它的冒泡。
+然后我们添加了带 `false` 值的 `mouseoverBubble`，它在事件通过 `myButtonHandler` 后阻止了它的冒泡。
 
 ### 依赖
 
