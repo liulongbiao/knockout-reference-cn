@@ -165,12 +165,12 @@ ko.bindingHandlers.hasFocus = {
 </script>
 ```
 
-### 注：支持虚元素
+### 注：支持虚拟元素
 
-如果你想自定义绑定能够通过 Knockout 的 *虚元素语法* 来使用，如：
+如果你想自定义绑定能够通过 Knockout 的 *虚拟元素语法* 来使用，如：
 
 ```html
 <!-- ko mybinding: somedata --> ... <!-- /ko -->
 ```
 
-... 那可以查看 [虚元素的文档](./custom-bindings-for-virtual-elements.md)
+... 那可以查看 [虚拟元素的文档](./custom-bindings-for-virtual-elements.md)
