@@ -51,7 +51,7 @@
       * [创建自定义绑定](knockout/document/custom-bindings.md)
       * [控制后代绑定](knockout/document/custom-bindings-controlling-descendant-bindings.md)
       * [支持虚元素](knockout/document/custom-bindings-for-virtual-elements.md)
-      * [自定义清除逻辑](knockout/document/custom-bindings-disposal.md)
+      * [自定义清理逻辑](knockout/document/custom-bindings-disposal.md)
    * 组件
       * [组件概要](knockout/document/component-overview.md)
       * [组件的定义和注册](knockout/document/component-registration.md)
