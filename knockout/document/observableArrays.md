@@ -98,7 +98,7 @@ KO 的 `observableArray` 本身具有等价的函数，且更加有用，因为�
 * `myObservableArray.removeAll(['Chad', 132, undefined])` 移除所有等于 `'chad'`，`123` 或 `undefined` 的值，并将它们作为数组返回
 * `myObservableArray.removeAll()` 移除所有值，并将它们作为数组返回
 
-### destroy 和 destroyAll (仅和 Ruby on Rails 开发者相关)
+### <a name="destroy-and-destroyAll"></a> destroy 和 destroyAll (仅和 Ruby on Rails 开发者相关)
 
 `destroy` 和 `destroyAll` 函数主要是给使用 Ruby on Rails 的开发者提供便利：
 

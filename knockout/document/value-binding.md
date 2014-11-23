@@ -76,7 +76,7 @@ Knockout 对下拉列表(即 `<select>` 元素)有特殊的支持。
 这时，你可以选择在标签中指定你的 `<option>` 元素或者使用 `foreach` 或 `template` 绑定来构建它们。
 你甚至可以再 `<optgroup>` 元素中嵌套选项，而 Knockout 将相应地设置被选项。
 
-#### 在 `<select>` 元素上使用 `valueAllowUnset`
+#### <a name="using-valueallowunset-with-select-elements"></a> 在 `<select>` 元素上使用 `valueAllowUnset`
 
 通常当你在 `<select>` 元素上使用 `value` 绑定时，它意味着你想关联的模型值来描述
 `<select>` 中的哪一个项被选中。
